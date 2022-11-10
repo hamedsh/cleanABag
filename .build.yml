@@ -12,10 +12,10 @@ tasks:
       cd cleanABag
       make buildAll
 artifacts:
-  - walgot/bin/cleanABag_linux_amd64
-  - walgot/bin/cleanABag_linux_arm
-  - walgot/bin/cleanABag_linux_arm64
-  - walgot/bin/cleanABag_linux_386
+  - cleanABag/bin/cleanABag_linux_amd64
+  - cleanABag/bin/cleanABag_linux_arm
+  - cleanABag/bin/cleanABag_linux_arm64
+  - cleanABag/bin/cleanABag_linux_386
 triggers:
   - action: email
     condition: always
