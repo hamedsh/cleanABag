@@ -1,0 +1,22 @@
+image: alpine/edge
+packages:
+  - go
+  - make
+sources:
+  - https://git.sr.ht/~bacardi55/cleanABag
+tasks:
+  - setup: |
+      cd cleanABag
+      make dependencies
+  - build: |
+      cd cleanABag
+      make buildAll
+artifacts:
+  - walgot/bin/cleanABag_linux_amd64
+  - walgot/bin/cleanABag_linux_arm
+  - walgot/bin/cleanABag_linux_arm64
+  - walgot/bin/cleanABag_linux_386
+triggers:
+  - action: email
+    condition: always
+    to: bac@rdi55.pl
