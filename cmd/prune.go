@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	cfgUnread  bool
-	cfgStarred bool
-	cfgDate    string
-	cfgDelete  bool
+	cfgUnread   bool
+	cfgStarred  bool
+	cfgDate     string
+	cfgDelete   bool
+	cfgArchived bool
 )
 
 /*
@@ -28,8 +29,9 @@ type wallabagURL struct {
 func init() {
 	pruneCmd.PersistentFlags().BoolVarP(&cfgUnread, "unread", "u", false, "Include unread entries for deletion. False will prevent unread articles from being deleted")
 	pruneCmd.Flags().BoolVarP(&cfgStarred, "starred", "s", false, "Include starred entry in deletion. False will prevent starred article to be deleted.")
-	pruneCmd.Flags().StringVarP(&cfgDate, "date", "d", "", "Articles older than this date will be removed if they match the archived/starred flags, format \"YYYY-MM-DD\".")
+	pruneCmd.Flags().StringVarP(&cfgDate, "date", "d", "", "Articles older than this date will be removed if they match the archived/starred flags, format \"YYYY-MM-DDTHH-MM\".")
 	pruneCmd.Flags().BoolVar(&cfgDelete, "delete", false, "Delete articles. Without this flag, it will only do a dry run.")
+	pruneCmd.Flags().BoolVar(&cfgArchived, "archived", false, "Delete_article, even its archived.")
 
 	pruneCmd.MarkFlagRequired("date")
 
@@ -54,7 +56,7 @@ var pruneCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		baseDate, err := time.Parse("2006-01-02", cfgDate)
+		baseDate, err := time.Parse("2006-01-02T15-04", cfgDate)
 		if err != nil {
 			fmt.Println("Wrong time format provided.")
 			fmt.Println(err.Error())
@@ -112,8 +114,9 @@ var pruneCmd = &cobra.Command{
 		var toRemove []wallabago.Item
 		for i := 0; i < len(e.Embedded.Items); i++ {
 			if e.Embedded.Items[i].UpdatedAt.Time.Before(baseDate) &&
-				(e.Embedded.Items[i].IsArchived == 1 || unread == 1) &&
-				(e.Embedded.Items[i].IsStarred == 0 || starred == 1) {
+				(cfgArchived ||
+					((e.Embedded.Items[i].IsArchived == 1 || unread == 1) &&
+						(e.Embedded.Items[i].IsStarred == 0 || starred == 1))) {
 				toRemove = append(toRemove, e.Embedded.Items[i])
 			}
 		}
