@@ -12,26 +12,19 @@ import (
 )
 
 var (
-	cfgUnread   bool
-	cfgStarred  bool
-	cfgDate     string
-	cfgDelete   bool
-	cfgArchived bool
+	cfgUnread  bool
+	cfgStarred bool
+	cfgDate    string
+	cfgDelete  bool
+	cfgForce   bool
 )
-
-/*
-  TODO: See comment for delete API call.
-type wallabagURL struct {
-	url string
-}
-*/
 
 func init() {
 	pruneCmd.PersistentFlags().BoolVarP(&cfgUnread, "unread", "u", false, "Include unread entries for deletion. False will prevent unread articles from being deleted")
 	pruneCmd.Flags().BoolVarP(&cfgStarred, "starred", "s", false, "Include starred entry in deletion. False will prevent starred article to be deleted.")
 	pruneCmd.Flags().StringVarP(&cfgDate, "date", "d", "", "Articles older than this date will be removed if they match the archived/starred flags, format \"YYYY-MM-DDTHH-MM\".")
 	pruneCmd.Flags().BoolVar(&cfgDelete, "delete", false, "Delete articles. Without this flag, it will only do a dry run.")
-	pruneCmd.Flags().BoolVar(&cfgArchived, "archived", false, "Delete_article, even its archived.")
+	pruneCmd.Flags().BoolVar(&cfgForce, "force", false, "Delete_article, even its archived.")
 
 	pruneCmd.MarkFlagRequired("date")
 
@@ -112,84 +105,84 @@ var pruneCmd = &cobra.Command{
 			starred,
 		)
 		var toRemove []wallabago.Item
-		for i := 0; i < len(e.Embedded.Items); i++ {
-			if e.Embedded.Items[i].UpdatedAt.Time.Before(baseDate) &&
-				(cfgArchived ||
-					((e.Embedded.Items[i].IsArchived == 1 || unread == 1) &&
-						(e.Embedded.Items[i].IsStarred == 0 || starred == 1))) {
-				toRemove = append(toRemove, e.Embedded.Items[i])
-			}
-		}
+		toRemove = ArticlesToRemove(e, baseDate, unread, starred, cfgForce)
 
 		if len(toRemove) == 0 {
 			fmt.Println("Nothing to delete, leaving")
 			os.Exit(0)
 		}
-		fmt.Println("This command will remove", len(toRemove), "entries:")
-		//var urlToDelete []map[string]string
-		for i := 0; i < len(toRemove); i++ {
-			status := "  "
-			if toRemove[i].IsArchived == 0 {
-				status = "🆕"
-			}
-			if toRemove[i].IsStarred == 1 {
-				status += "⭐"
-			} else {
-				status += "  "
-			}
-
-			fmt.Println(
-				"- ",
-				toRemove[i].UpdatedAt.Format("2006-01-02"),
-				status,
-				toRemove[i].Title,
-			)
-			//u := map[string]string{"url": toRemove[i].URL}
-			//urlToDelete = append(urlToDelete, u)
-		}
+		PrintCandidateArticles(toRemove)
 
 		if cfgDelete {
-			// Seems there is an issue with the /entries/list.json
-			// endpoint for the DELETE method
-			// Instead, deleting one by one…
-			// Keeping the following code to figure it out later.
-			/*
-				toDelete, _ := json.Marshal(urlToDelete)
-				url := wallabago.Config.WallabagURL + "/api/entries/list.json"
-				response, err := wallabago.APICall(
-					url,
-					"DELETE",
-					toDelete,
-				)
-				if err != nil {
-					fmt.Println(err.Error())
-					os.Exit(1)
-				}
-			*/
-			baseURL := wallabago.Config.WallabagURL + "/api/entries/"
-			for i := 0; i < len(toRemove); i++ {
-				url := baseURL + strconv.Itoa(toRemove[i].ID)
-				response, err := wallabago.APICall(
-					url,
-					"DELETE",
-					[]byte{},
-				)
-				if err != nil {
-					fmt.Println("Couldn't delete entry", toRemove[i].ID)
-					fmt.Println(err.Error())
-					os.Exit(1)
-				}
-
-				var item wallabago.Item
-				err = json.Unmarshal(response, &item)
-				if err != nil {
-					fmt.Println("Bad format response from wallabag")
-					fmt.Println(err.Error())
-					os.Exit(1)
-				}
-				fmt.Println("Entry", item.Title, "(", item.URL, ") has been deleted.")
-				time.Sleep(500 * time.Millisecond)
-			}
+			DeleteArticles(toRemove)
 		}
 	},
+}
+
+func DeleteArticles(toRemove []wallabago.Item) {
+	baseURL := wallabago.Config.WallabagURL + "/api/entries/"
+	for i := 0; i < len(toRemove); i++ {
+		url := baseURL + strconv.Itoa(toRemove[i].ID)
+		response, err := wallabago.APICall(
+			url,
+			"DELETE",
+			[]byte{},
+		)
+		if err != nil {
+			fmt.Println("Couldn't delete entry", toRemove[i].ID)
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		var item wallabago.Item
+		err = json.Unmarshal(response, &item)
+		if err != nil {
+			fmt.Println("Bad format response from wallabag")
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("Entry", item.Title, "(", item.URL, ") has been deleted.")
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+func PrintCandidateArticles(toRemove []wallabago.Item) {
+	fmt.Println("This command will remove", len(toRemove), "entries:")
+	for i := 0; i < len(toRemove); i++ {
+		status := "  "
+		if toRemove[i].IsArchived == 0 {
+			status = "🆕"
+		}
+		if toRemove[i].IsStarred == 1 {
+			status += "⭐"
+		} else {
+			status += "  "
+		}
+
+		fmt.Println(
+			"- ",
+			toRemove[i].UpdatedAt.Format("2006-01-02"),
+			status,
+			toRemove[i].Title,
+		)
+	}
+}
+
+func ArticlesToRemove(
+	e wallabago.Entries,
+	baseDate time.Time,
+	unread int,
+	starred int,
+	cfgForce bool, // Define cfgForce or pass it as a parameter to the function
+) []wallabago.Item {
+	var toRemove []wallabago.Item
+	for i := 0; i < len(e.Embedded.Items); i++ {
+		if e.Embedded.Items[i].UpdatedAt.Time.Before(baseDate) &&
+			(cfgForce ||
+				((e.Embedded.Items[i].IsArchived == 1 || unread == 1) &&
+					(e.Embedded.Items[i].IsStarred == 0 || starred == 1))) {
+			toRemove = append(toRemove, e.Embedded.Items[i])
+		}
+	}
+	return toRemove
 }
