@@ -1,5 +1,10 @@
 # cleanABag - A CLI tool to clean your (walla)bag
 
+Based on bacardi55 code (https://git.sr.ht/~bacardi55/cleanABag)
+with some modifications to make it easier
+- force parameter to clean all articles
+- some small refactor
+
 [![builds.sr.ht status](https://builds.sr.ht/~bacardi55/walgot.svg)](https://builds.sr.ht/~bacardi55/cleanABag?)
 [![license: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-informational.svg)](LICENSE)
 
@@ -58,7 +63,7 @@ Usage:
   cleanABag prune [flags]
 
 Flags:
-  -d, --date string   Articles older than this date will be removed if they match the archived/starred flags, format "YYYY-MM-DD".
+  -d, --date string   Articles older than this date will be removed if they match the archived/starred flags, format "YYYY-MM-DDTHH-mm".
       --delete        Delete articles. Without this flag, it will only do a dry run.
   -h, --help          help for prune
   -s, --starred       Include starred entry in deletion. False will prevent starred article to be deleted.
@@ -71,23 +76,23 @@ Global Flags:
 Example:
 
 ``` bash
-# Remove archived articles older than 2021-12-31 (date in YYYY-MM-DD format) and that are not starred:
+# Remove archived articles older than 2021-12-31 (date in YYYY-MM-DDTHH-mm format) and that are not starred:
 # Dry run:
-cleanABag -c /path/to/credentials.json -d "2021-12-31"
+cleanABag -c /path/to/credentials.json -d "2021-12-31T00-00"
 # Delete for real:
-cleanABag -c /path/to/credentials.json -d "2021-12-31" --delete
+cleanABag -c /path/to/credentials.json -d "2021-12-31T00-00" --delete
 
 # Remove articles older than 2021-12-31, including unread but keep starred article
 # Dry run:
-cleanABag -c /path/to/credentials.json -d "2021-12-31" -u
+cleanABag -c /path/to/credentials.json -d "2021-12-31T00-00" -u
 # Delete for real:
-cleanABag -c /path/to/credentials.json -d "2021-12-31" -u --delete
+cleanABag -c /path/to/credentials.json -d "2021-12-31T00-00" -u --delete
 
 # Remove articles older than 2021-12-31, including unread and starred article
 # Dry run:
-cleanABag -c /path/to/credentials.json -d "2021-12-31" -u -s
+cleanABag -c /path/to/credentials.json -d "2021-12-31T00-00" -u -s
 # Delete for real:
-cleanABag -c /path/to/credentials.json -d "2021-12-31" -u -s --delete
+cleanABag -c /path/to/credentials.json -d "2021-12-31T00-00" -u -s --delete
 
 ```
 
